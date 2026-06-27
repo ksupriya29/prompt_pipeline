@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prompt Pipeline — Support Ticket Triage</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14'>🔄</text></svg>" />
+    <style>
+        /* ───────────── Reset & Base ───────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* ───────────── Header ───────────── */
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        header p {
+            color: #94a3b8;
+            margin-top: 0.5rem;
+            font-size: 1rem;
+        }
+        .badge {
+            display: inline-block;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 999px;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+        }
+
+        /* ───────────── Input Section ───────────── */
+        .input-section {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .input-section label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+        .input-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .input-row select, .input-row textarea {
+            flex: 1;
+            min-width: 200px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        .input-row select {
+            cursor: pointer;
+        }
+        .input-row select option {
+            background: #1e293b;
+        }
+        .input-row textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .input-row textarea:focus, .input-row select:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            color: #fff;
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+        }
+        .btn-secondary {
+            background: #334155;
+            color: #e2e8f0;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: #475569;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+
+        .status-msg {
+            margin-left: auto;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .status-msg.loading {
+            color: #60a5fa;
+        }
+        .status-msg.error {
+            color: #f87171;
+        }
+        .status-msg.success {
+            color: #34d399;
+        }
+
+        /* ───────────── Prompts Accordion ───────────── */
+        .prompts-section {
+            margin-bottom: 2rem;
+        }
+        .prompts-toggle {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            width: 100%;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: border-color 0.2s;
+        }
+        .prompts-toggle:hover {
+            border-color: #60a5fa;
+        }
+        .prompts-toggle .arrow {
+            transition: transform 0.3s;
+        }
+        .prompts-toggle.open .arrow {
+            transform: rotate(180deg);
+        }
+        .prompts-content {
+            display: none;
+            margin-top: 0.5rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .prompts-content.open {
+            display: block;
+        }
+        .prompt-card {
+            margin-bottom: 0.75rem;
+        }
+        .prompt-card:last-child {
+            margin-bottom: 0;
+        }
+        .prompt-card h4 {
+            font-size: 0.85rem;
+            color: #60a5fa;
+            margin-bottom: 0.25rem;
+        }
+        .prompt-card .technique {
+            font-size: 0.75rem;
+            color: #a78bfa;
+            margin-bottom: 0.25rem;
+        }
+        .prompt-card pre {
+            background: #0f172a;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.75rem;
+            overflow-x: auto;
+            color: #cbd5e1;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* ───────────── Pipeline Stages ───────────── */
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stage-connector {
+            text-align: center;
+            color: #475569;
+            font-size: 0.75rem;
+            padding: 0.25rem 0;
+        }
+        .stage-connector .arrow-down {
+            display: inline-block;
+            font-size: 1.2rem;
+        }
+
+        .stage {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+        .stage.active {
+            border-color: #60a5fa;
+        }
+        .stage.completed {
+            border-color: #34d399;
+        }
+        .stage.errored {
+            border-color: #f87171;
+        }
+
+        .stage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .stage-header:hover {
+            background: #334155;
+        }
+        .stage-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .stage-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: #334155;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+        .stage.active .stage-number {
+            background: #60a5fa;
+            color: #fff;
+        }
+        .stage.completed .stage-number {
+            background: #34d399;
+            color: #fff;
+        }
+        .stage.errored .stage-number {
+            background: #f87171;
+            color: #fff;
+        }
+
+        .stage-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .stage-technique {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-left: 0.5rem;
+        }
+        .stage-status {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .stage.active .stage-status {
+            color: #60a5fa;
+        }
+        .stage.completed .stage-status {
+            color: #34d399;
+        }
+        .stage.errored .stage-status {
+            color: #f87171;
+        }
+
+        .stage-body {
+            display: none;
+            padding: 0 1rem 1rem 1rem;
+            border-top: 1px solid #334155;
+        }
+        .stage-body.open {
+            display: block;
+        }
+
+        .stage-body h4 {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        .stage-body pre {
+            background: #0f172a;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.78rem;
+            overflow-x: auto;
+            color: #cbd5e1;
+            max-height: 250px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* ───────────── Final Output ───────────── */
+        .output-section {
+            background: #1e293b;
+            border: 1px solid #34d399;
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: none;
+        }
+        .output-section.visible {
+            display: block;
+        }
+        .output-section h3 {
+            color: #34d399;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .output-section .reply-box {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #f1f5f9;
+            border-left: 4px solid #34d399;
+        }
+        .output-meta {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .output-meta .meta-item {
+            background: #0f172a;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .output-meta .meta-item strong {
+            color: #e2e8f0;
+        }
+
+        /* ───────────── Error ───────────── */
+        .error-box {
+            background: #1e293b;
+            border: 1px solid #f87171;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .error-box.visible {
+            display: block;
+        }
+        .error-box h3 {
+            color: #f87171;
+            margin-bottom: 0.5rem;
+        }
+        .error-box pre {
+            background: #0f172a;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.8rem;
+            color: #fca5a5;
+        }
+
+        /* ───────────── Spinner ───────────── */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #334155;
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ───────────── Reflection Section ───────────── */
+        .reflection-section {
+            margin-top: 2rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .reflection-section h3 {
+            color: #fbbf24;
+            margin-bottom: 0.75rem;
+        }
+        .reflection-section p {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        /* ───────────── Responsive ───────────── */
+        @media (max-width: 640px) {
+            .container { padding: 1rem; }
+            header h1 { font-size: 1.5rem; }
+            .input-row { flex-direction: column; }
+            .input-row select, .input-row textarea { min-width: 100%; }
+            .btn-row { flex-direction: column; }
+            .btn-row .btn { width: 100%; justify-content: center; }
+            .status-msg { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔄 Prompt Pipeline</h1>
+            <p>Support Ticket Triage — 3 stages, JSON handoffs, one pipeline</p>
+            <div class="badge">Stage 1: Role + Structured Output → Stage 2: Chain-of-Thought → Stage 3: Goal-Oriented + Constraints</div>
+        </header>
+
+        <!-- Input Section -->
+        <div class="input-section">
+            <label for="ticket-select">📝 Choose a sample ticket or write your own</label>
+            <div class="input-row">
+                <select id="ticket-select">
+                    <option value="">— Select a sample —</option>
+                </select>
+                <textarea id="ticket-text" placeholder="Or paste a raw customer message here..."></textarea>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" id="btn-run" onclick="runPipeline()">
+                    ▶ Run Pipeline
+                </button>
+                <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+                <span class="status-msg" id="status-msg"></span>
+            </div>
+        </div>
+
+        <!-- Prompts Toggle -->
+        <div class="prompts-section">
+            <button class="prompts-toggle" onclick="togglePrompts()">
+                <span>📄 View Stage Prompts</span>
+                <span class="arrow">▼</span>
+            </button>
+            <div class="prompts-content" id="prompts-content">
+                <div class="prompt-card">
+                    <h4>Stage 1 — UNDERSTAND</h4>
+                    <div class="technique">Technique: Role + Structured Output</div>
+                    <pre id="prompt-stage1">Loading...</pre>
+                </div>
+                <div class="prompt-card">
+                    <h4>Stage 2 — REASON</h4>
+                    <div class="technique">Technique: Chain-of-Thought</div>
+                    <pre id="prompt-stage2">Loading...</pre>
+                </div>
+                <div class="prompt-card">
+                    <h4>Stage 3 — PRODUCE</h4>
+                    <div class="technique">Technique: Goal-Oriented + Constraints</div>
+                    <pre id="prompt-stage3">Loading...</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Box -->
+        <div class="error-box" id="error-box">
+            <h3>⚠️ Pipeline Error</h3>
+            <pre id="error-text"></pre>
+        </div>
+
+        <!-- Pipeline Stages -->
+        <div class="pipeline" id="pipeline">
+            <!-- Stages injected by JS -->
+        </div>
+
+        <!-- Final Output -->
+        <div class="output-section" id="output-section">
+            <h3>✅ Draft Reply</h3>
+            <div class="reply-box" id="reply-text"></div>
+            <div class="output-meta" id="output-meta"></div>
+        </div>
+
+        <!-- Reflection -->
+        <div class="reflection-section">
+            <h3>💡 Reflection — Weakest Link</h3>
+            <p>
+                <strong>Stage 1 (Understand)</strong> is the weakest stage. It depends entirely on the LLM correctly
+                identifying fields like <code>days_waiting</code> and <code>sentiment</code> from often ambiguous text —
+                especially when customers express frustration indirectly or mix multiple issues. A misclassification here
+                cascades into wrong priority in Stage 2 and an off-tone reply in Stage 3.
+            </p>
+            <p style="margin-top: 0.5rem;">
+                With a <strong>retrieval tool (Day 4)</strong>, past resolved tickets matching the issue_category could
+                ground the analysis. With a <strong>structured extraction tool (Day 6+)</strong>, a dedicated NER service
+                or fine-tuned extractor could handle numeric fields like <code>days_waiting</code> more reliably.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // ──────────── State ────────────
+        let isRunning = false;
+
+        // ──────────── On Load ────────────
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadSamples();
+            await loadPrompts();
+            buildStageUI();
+        });
+
+        // ──────────── Load Samples ────────────
+        async function loadSamples() {
+            try {
+                const resp = await fetch('/api/samples');
+                const samples = await resp.json();
+                const select = document.getElementById('ticket-select');
+                select.innerHTML = '<option value="">— Select a sample —</option>';
+                samples.forEach((s, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = s.label;
+                    select.appendChild(opt);
+                });
+                select.addEventListener('change', () => {
+                    const idx = select.value;
+                    if (idx !== '') {
+                        document.getElementById('ticket-text').value = samples[parseInt(idx)].text;
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to load samples:', e);
+            }
+        }
+
+        // ──────────── Load Prompts ────────────
+        async function loadPrompts() {
+            try {
+                const resp = await fetch('/api/prompts');
+                const prompts = await resp.json();
+                document.getElementById('prompt-stage1').textContent = prompts.stage1;
+                document.getElementById('prompt-stage2').textContent = prompts.stage2;
+                document.getElementById('prompt-stage3').textContent = prompts.stage3;
+            } catch (e) {
+                console.error('Failed to load prompts:', e);
+            }
+        }
+
+        // ──────────── Toggle Prompts ────────────
+        function togglePrompts() {
+            const content = document.getElementById('prompts-content');
+            const toggle = document.querySelector('.prompts-toggle');
+            content.classList.toggle('open');
+            toggle.classList.toggle('open');
+        }
+
+        // ──────────── Build Stage UI ────────────
+        const STAGES = [
+            { num: 1, name: 'UNDERSTAND', technique: 'Role + Structured Output', icon: '🔍' },
+            { num: 2, name: 'REASON', technique: 'Chain-of-Thought', icon: '🧠' },
+            { num: 3, name: 'PRODUCE', technique: 'Goal-Oriented + Constraints', icon: '✍️' },
+        ];
+
+        function buildStageUI() {
+            const container = document.getElementById('pipeline');
+            container.innerHTML = '';
+            STAGES.forEach((stage, i) => {
+                if (i > 0) {
+                    const connector = document.createElement('div');
+                    connector.className = 'stage-connector';
+                    connector.innerHTML = '<span class="arrow-down">▼</span> JSON handoff';
+                    container.appendChild(connector);
+                }
+                const div = document.createElement('div');
+                div.className = 'stage';
+                div.id = `stage-${stage.num}`;
+                div.innerHTML = `
+                    <div class="stage-header" onclick="toggleStage(${stage.num})">
+                        <div class="stage-info">
+                            <div class="stage-number">${stage.num}</div>
+                            <span class="stage-name">${stage.icon} Stage ${stage.num} — ${stage.name}</span>
+                            <span class="stage-technique">${stage.technique}</span>
+                        </div>
+                        <span class="stage-status" id="stage-${stage.num}-status">⏳ Waiting</span>
+                    </div>
+                    <div class="stage-body" id="stage-${stage.num}-body">
+                        <h4>📥 Input</h4>
+                        <pre id="stage-${stage.num}-input">—</pre>
+                        <h4>📤 Raw LLM Output</h4>
+                        <pre id="stage-${stage.num}-raw">—</pre>
+                        <h4>📊 Parsed JSON</h4>
+                        <pre id="stage-${stage.num}-parsed">—</pre>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function toggleStage(num) {
+            const body = document.getElementById(`stage-${num}-body`);
+            body.classList.toggle('open');
+        }
+
+        // ──────────── Run Pipeline ────────────
+        async function runPipeline() {
+            if (isRunning) return;
+            const text = document.getElementById('ticket-text').value.trim();
+            if (!text) {
+                setStatus('Please enter or select a ticket message.', 'error');
+                return;
+            }
+
+            isRunning = true;
+            const btn = document.getElementById('btn-run');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Running...';
+
+            // Reset UI
+            document.getElementById('error-box').classList.remove('visible');
+            document.getElementById('output-section').classList.remove('visible');
+            STAGES.forEach(s => {
+                const stage = document.getElementById(`stage-${s.num}`);
+                stage.className = 'stage';
+                document.getElementById(`stage-${s.num}-status`).textContent = '⏳ Waiting';
+                document.getElementById(`stage-${s.num}-input`).textContent = '—';
+                document.getElementById(`stage-${s.num}-raw`).textContent = '—';
+                document.getElementById(`stage-${s.num}-parsed`).textContent = '—';
+            });
+
+            setStatus('Running pipeline...', 'loading');
+
+            try {
+                const resp = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                const result = await resp.json();
+
+                if (result.error) {
+                    showError(result.error);
+                    setStatus('Pipeline failed', 'error');
+                    isRunning = false;
+                    btn.disabled = false;
+                    btn.innerHTML = '▶ Run Pipeline';
+                    return;
+                }
+
+                // Render stages
+                result.stages.forEach((stageData, idx) => {
+                    const num = idx + 1;
+                    const stageEl = document.getElementById(`stage-${num}`);
+                    stageEl.className = 'stage completed';
+                    document.getElementById(`stage-${num}-status`).textContent = '✅ Complete';
+
+                    const input = typeof stageData.input === 'string' ? stageData.input : JSON.stringify(stageData.input, null, 2);
+                    document.getElementById(`stage-${num}-input`).textContent = input;
+                    document.getElementById(`stage-${num}-raw`).textContent = stageData.raw_llm_output || '—';
+                    document.getElementById(`stage-${num}-parsed`).textContent = JSON.stringify(stageData.parsed_output, null, 2);
+                });
+
+                // Open all stage bodies
+                STAGES.forEach(s => {
+                    document.getElementById(`stage-${s.num}-body`).classList.add('open');
+                });
+
+                // Show output
+                if (result.output) {
+                    document.getElementById('reply-text').textContent = result.output.reply || result.output.reply_text || '';
+                    const meta = document.getElementById('output-meta');
+                    meta.innerHTML = '';
+                    if (result.output.word_count) {
+                        meta.innerHTML += `<span class="meta-item"><strong>Word count:</strong> ${result.output.word_count}</span>`;
+                    }
+                    if (result.output.tone) {
+                        meta.innerHTML += `<span class="meta-item"><strong>Tone:</strong> ${result.output.tone}</span>`;
+                    }
+                    const decision = result.stages[1]?.parsed_output;
+                    if (decision) {
+                        if (decision.priority) meta.innerHTML += `<span class="meta-item"><strong>Priority:</strong> ${decision.priority}</span>`;
+                        if (decision.assigned_team) meta.innerHTML += `<span class="meta-item"><strong>Assigned to:</strong> ${decision.assigned_team}</span>`;
+                        if (decision.sla_hours) meta.innerHTML += `<span class="meta-item"><strong>SLA:</strong> ${decision.sla_hours}h</span>`;
+                        if (decision.risk) meta.innerHTML += `<span class="meta-item"><strong>Risk:</strong> ${decision.risk}</span>`;
+                    }
+                    document.getElementById('output-section').classList.add('visible');
+                }
+
+                setStatus('✅ Pipeline completed successfully!', 'success');
+
+            } catch (e) {
+                showError(`Request failed: ${e.message}`);
+                setStatus('Request failed', 'error');
+            }
+
+            isRunning = false;
+            btn.disabled = false;
+            btn.innerHTML = '▶ Run Pipeline';
+        }
+
+        // ──────────── Helpers ────────────
+        function setStatus(msg, type) {
+            const el = document.getElementById('status-msg');
+            el.textContent = msg;
+            el.className = 'status-msg' + (type ? ` ${type}` : '');
+        }
+
+        function showError(msg) {
+            document.getElementById('error-text').textContent = msg;
+            document.getElementById('error-box').classList.add('visible');
+        }
+
+        function clearAll() {
+            document.getElementById('ticket-text').value = '';
+            document.getElementById('ticket-select').value = '';
+            document.getElementById('error-box').classList.remove('visible');
+            document.getElementById('output-section').classList.remove('visible');
+            setStatus('', '');
+            STAGES.forEach(s => {
+                const stage = document.getElementById(`stage-${s.num}`);
+                stage.className = 'stage';
+                document.getElementById(`stage-${s.num}-status`).textContent = '⏳ Waiting';
+                document.getElementById(`stage-${s.num}-input`).textContent = '—';
+                document.getElementById(`stage-${s.num}-raw`).textContent = '—';
+                document.getElementById(`stage-${s.num}-parsed`).textContent = '—';
+                document.getElementById(`stage-${s.num}-body`).classList.remove('open');
+            });
+        }
+    </script>
+</body>
+</html>
