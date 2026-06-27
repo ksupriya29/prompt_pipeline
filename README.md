@@ -122,6 +122,22 @@ The frontend is a single HTML file with no build step. It provides:
 | `/api/run` | POST | Runs the pipeline on submitted text |
 
 ---
+## 📸 Screenshots / Demo
+
+### 🏠 Home Page
+![Home Page](./home_page.png)
+
+### 📂 Select Sample
+![Select Sample](./select_sample.png)
+
+### 🧪 Result 1
+![Result 1](./result1.png)
+
+### 🧪 Result 2
+![Result 2](./result2.png)
+
+### 🧪 Result 3
+![Result 3](./result3.png)
 
 ## 🧪 Test Runs
 
